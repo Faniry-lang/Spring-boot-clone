@@ -1,67 +1,78 @@
 package com.itu.framework;
 
-import java.io.IOException;
-import java.io.PrintWriter;
+import com.itu.framework.helpers.ComponentScan;
+import com.itu.framework.helpers.Mapping;
 
-import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * This is the servlet that takes all incoming requests targeting the app - If
- * the requested resource exists, it delegates to the default dispatcher - else
- * it shows the requested URL
- */
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
 public class FrontServlet extends HttpServlet {
 
-    RequestDispatcher defaultDispatcher;
+    private Map<String, Mapping> urlMappings = new HashMap<>();
+    private String controllerPackage;
 
     @Override
-    public void init() {
-        defaultDispatcher = getServletContext().getNamedDispatcher("default");
-    }
-
-    @Override
-    protected void service(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        /**
-         * Example: 
-         * If URI is /app/folder/file.html 
-         * and context path is /app,
-         * then path = /folder/file.html
-         */
-        String path = req.getRequestURI().substring(req.getContextPath().length());
-        
-        boolean resourceExists = getServletContext().getResource(path) != null;
-
-        if (resourceExists) {
-            defaultServe(req, res);
-        } else {
-            customServe(req, res);
+    public void init(ServletConfig config) throws ServletException {
+        super.init(config);
+        this.controllerPackage = config.getInitParameter("controller-package");
+        if (this.controllerPackage == null || this.controllerPackage.isEmpty()) {
+            throw new ServletException("The 'controller-package' init-param is missing or empty in web.xml");
+        }
+        try {
+            this.urlMappings = ComponentScan.scanControllers(this.controllerPackage);
+        } catch (Exception e) {
+            throw new ServletException("Failed to scan controllers", e);
         }
     }
 
-    private void customServe(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        try (PrintWriter out = res.getWriter()) {
-            String uri = req.getRequestURI();
-            String responseBody = """
-                <html>
-                    <head><title>Resource Not Found</title></head>
-                    <body>
-                        <h1>Unknown resource</h1>
-                        <p>The requested URL was not found: <strong>%s</strong></p>
-                    </body>
-                </html>
-                """.formatted(uri);
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        processRequest(req, resp);
+    }
 
-            res.setContentType("text/html;charset=UTF-8");
-            out.println(responseBody);
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        processRequest(req, resp);
+    }
+
+    private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String path = req.getServletPath();
+        PrintWriter out = resp.getWriter();
+
+        Mapping mapping = urlMappings.get(path);
+
+        if (mapping == null) {
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "URL not found: " + path);
+            return;
+        }
+
+        try {
+            Class<?> clazz = Class.forName(mapping.getClassName());
+            Object controllerInstance = clazz.getConstructor().newInstance();
+            Method method = clazz.getMethod(mapping.getMethodName());
+
+            // on asumera pour l'instant que les méthodes retournent des String
+            Object result = method.invoke(controllerInstance);
+
+            out.println("Mapped method found for url: "+path);
+
+            if (result instanceof String) {
+                out.println("Method value: ");
+                out.println(result);
+            }
+
+        } catch (Exception e) {
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
+            e.printStackTrace(out);
         }
     }
-
-    private void defaultServe(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        defaultDispatcher.forward(req, res);
-    }
-
 }

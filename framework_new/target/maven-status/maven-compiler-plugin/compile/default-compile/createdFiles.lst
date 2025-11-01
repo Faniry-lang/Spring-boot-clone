@@ -1,5 +1,5 @@
+com/itu/framework/annotations/UrlMapping.class
 com/itu/framework/FrontServlet.class
 com/itu/framework/annotations/Controller.class
-com/itu/framework/annotations/URL.class
+com/itu/framework/helpers/Mapping.class
 com/itu/framework/helpers/ComponentScan.class
-com/itu/framework/helpers/ClassPathScanning.class
