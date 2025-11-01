@@ -6,6 +6,10 @@
     <servlet>
         <servlet-name>FrontServlet</servlet-name>
         <servlet-class>com.itu.framework.FrontServlet</servlet-class>
+        <init-param>
+            <param-name>controller-package</param-name>
+            <param-value>com.test.controllers</param-value>
+        </init-param>
     </servlet>
     <servlet-mapping>
         <servlet-name>FrontServlet</servlet-name>
