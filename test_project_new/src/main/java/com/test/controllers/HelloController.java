@@ -2,13 +2,14 @@ package com.test.controllers;
 
 import com.itu.framework.annotations.Controller;
 import com.itu.framework.annotations.UrlMapping;
+import com.itu.framework.view.ModelView;
 
 @Controller("/hello")
 public class HelloController {
 
     @UrlMapping("/greeting")
-    public String sayHello() {
-        return "Hello from the framework!";
+    public ModelView sayHello() {
+        return new ModelView("hello");
     }
 
     @UrlMapping("/bye")
