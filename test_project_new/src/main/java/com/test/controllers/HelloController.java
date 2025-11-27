@@ -12,6 +12,11 @@ public class HelloController {
         return new ModelView("hello");
     }
 
+    @UrlMapping("/{name}")
+    public String sayHelloToName(String name) {
+        return "Hello " + name + "!";
+    }
+
     @UrlMapping("/bye")
     public String sayGoodbye() {
         return "Goodbye!";
