@@ -68,6 +68,20 @@ public class FrontServlet extends HttpServlet {
         Mapping mapping = urlMappings.get(path);
 
         if (mapping == null) {
+            // Check for patterns with placeholders
+            for (String pattern : urlMappings.keySet()) {
+                if (pattern.contains("{")) {
+                    // Convert pattern to regex: /etudiants/{id} -> /etudiants/[^/]+
+                    String regex = pattern.replaceAll("\\{[^}]+\\}", "[^/]+");
+                    if (path.matches(regex)) {
+                        mapping = urlMappings.get(pattern);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (mapping == null) {
             // Try to forward to the default servlet for static resources
             if (req.getServletPath().startsWith("/WEB-INF/") || req.getServletPath().contains(".")) {
                 req.getServletContext().getNamedDispatcher("default").forward(req, resp);
