@@ -116,30 +116,47 @@ public class FrontServlet extends HttpServlet {
                 java.lang.reflect.Parameter parameter = parameters[i];
                 String paramName = parameter.getName();
 
-                // Check if this parameter is a path variable
-                // Pattern: /hello/{name} -> we need to find the value for {name}
-                for (String pattern : urlMappings.keySet()) {
-                    if (urlMappings.get(pattern).equals(mapping) && pattern.contains("{" + paramName + "}")) {
-                        // Extract value from URL
-                        // This is a simplified extraction logic.
-                        // For /hello/{name} and path /hello/Faniry
-                        // We can split by / and find the index
+                // Check if parameter has @RequestParam annotation
+                if (parameter.isAnnotationPresent(com.itu.framework.annotations.RequestParam.class)) {
+                    com.itu.framework.annotations.RequestParam requestParam = parameter
+                            .getAnnotation(com.itu.framework.annotations.RequestParam.class);
+                    String requestParamName = requestParam.value();
+                    String value = req.getParameter(requestParamName);
 
-                        String[] patternParts = pattern.split("/");
-                        String[] pathParts = path.split("/");
+                    if (value != null) {
+                        // Basic type conversion
+                        if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
+                            args[i] = Integer.parseInt(value);
+                        } else {
+                            args[i] = value;
+                        }
+                    }
+                } else {
+                    // Check if this parameter is a path variable
+                    // Pattern: /hello/{name} -> we need to find the value for {name}
+                    for (String pattern : urlMappings.keySet()) {
+                        if (urlMappings.get(pattern).equals(mapping) && pattern.contains("{" + paramName + "}")) {
+                            // Extract value from URL
+                            // This is a simplified extraction logic.
+                            // For /hello/{name} and path /hello/Faniry
+                            // We can split by / and find the index
 
-                        for (int j = 0; j < patternParts.length; j++) {
-                            if (patternParts[j].equals("{" + paramName + "}")) {
-                                if (j < pathParts.length) {
-                                    String value = pathParts[j];
-                                    // Basic type conversion
-                                    if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
-                                        args[i] = Integer.parseInt(value);
-                                    } else {
-                                        args[i] = value;
+                            String[] patternParts = pattern.split("/");
+                            String[] pathParts = path.split("/");
+
+                            for (int j = 0; j < patternParts.length; j++) {
+                                if (patternParts[j].equals("{" + paramName + "}")) {
+                                    if (j < pathParts.length) {
+                                        String value = pathParts[j];
+                                        // Basic type conversion
+                                        if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
+                                            args[i] = Integer.parseInt(value);
+                                        } else {
+                                            args[i] = value;
+                                        }
                                     }
+                                    break;
                                 }
-                                break;
                             }
                         }
                     }
