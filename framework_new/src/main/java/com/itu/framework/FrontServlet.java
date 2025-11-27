@@ -59,42 +59,50 @@ public class FrontServlet extends HttpServlet {
     }
 
     private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-    String path = req.getServletPath();
-    PrintWriter out = resp.getWriter();
+        String path = req.getPathInfo();
+        if (path == null) {
+            path = req.getServletPath();
+        }
+        PrintWriter out = resp.getWriter();
 
-    Mapping mapping = urlMappings.get(path);
+        Mapping mapping = urlMappings.get(path);
 
-    if (mapping == null) {
-        resp.sendError(HttpServletResponse.SC_NOT_FOUND, "URL not found: " + path);
-        return;
-    }
-
-    try {
-        Class<?> clazz = Class.forName(mapping.getClassName());
-        Object controllerInstance = clazz.getConstructor().newInstance();
-        Method method = clazz.getMethod(mapping.getMethodName());
-
-        Object result = method.invoke(controllerInstance);
-
-        if (result instanceof String) {
-            out.println(result);
-
-        } else if (result instanceof ModelView) {
-            ModelView mv = (ModelView) result;
-            String viewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
-
-            if (getServletContext().getResource(viewPath) == null) {
-                resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Resource not found: " + viewPath);
+        if (mapping == null) {
+            // Try to forward to the default servlet for static resources
+            if (req.getServletPath().startsWith("/WEB-INF/") || req.getServletPath().contains(".")) {
+                req.getServletContext().getNamedDispatcher("default").forward(req, resp);
                 return;
             }
-
-            req.getRequestDispatcher(viewPath).forward(req, resp);
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "URL not found: " + path);
+            return;
         }
 
-    } catch (Exception e) {
-        resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
-        e.printStackTrace(out);
+        try {
+            Class<?> clazz = Class.forName(mapping.getClassName());
+            Object controllerInstance = clazz.getConstructor().newInstance();
+            Method method = clazz.getMethod(mapping.getMethodName());
+
+            Object result = method.invoke(controllerInstance);
+
+            if (result instanceof String) {
+                out.println(result);
+
+            } else if (result instanceof ModelView) {
+                ModelView mv = (ModelView) result;
+                String viewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
+
+                if (getServletContext().getResource(viewPath) == null) {
+                    resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Resource not found: " + viewPath);
+                    return;
+                }
+
+                req.getRequestDispatcher(viewPath).forward(req, resp);
+            }
+
+        } catch (Exception e) {
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
+            e.printStackTrace(out);
+        }
     }
-}
 
 }

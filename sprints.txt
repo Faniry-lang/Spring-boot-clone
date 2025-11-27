@@ -1,0 +1,34 @@
+sprint-4: execution de la méthode de l'url
+    -si valeur de retour -> string
+        on affiche
+sprint4-4-bis:
+    -créer classe ModelView
+        -attributs:
+            -view (chaine de caractères)
+    -dans une méthode du controller, on peut créer un ModelView
+        -on set l'attribut view au nom de la page
+        -on fait en sorte d'afficher le contenu de cette page avec Dispatcher.
+sprint-5:
+	-mandefa donnée any am view
+	-anaty ModelView
+		-misy url
+		-misy Map<String, Object> data
+
+sprint 6:
+	-mandefa donnée any am controller
+		sprint-3-ter: -(gestion mapping url avec accolade) permettre ce genre d'url : /etudiants/{id} correspondant à /etudiants/25 par exemple!
+		
+		tsotra: -(matching nom anaty accolage sy nom argument) pour le cas avec l'accolade raha mitovy ny argument anle controller sy le anaty {} de alefa le methode
+		
+		bis: -(misy annotation @RequestParam(String arg)) sinon raha misy tsisy de jerena hoe misy requestparam mitovy aminy ve, de raha mitovy de alefa.
+		
+		ter: pour le cas où misy request.getParam mitovy anarana anle argument anle controller de alefa any,
+
+sprint 7:
+    -asiana GET sy POST
+    -comment?:
+        -ovaina le map<URL, ClassMethod> lasa map<URL, List<ClassMethod>>
+            -ClassMethod lasa:
+                Class class;
+                Method method;
+                String httpMethod; // POST OU GET
