@@ -16,4 +16,9 @@ public class HelloController {
     public String sayGoodbye() {
         return "Goodbye!";
     }
+
+    @UrlMapping("/{name}")
+    public String sayHelloToName() {
+        return "Hello you!";
+    }
 }
