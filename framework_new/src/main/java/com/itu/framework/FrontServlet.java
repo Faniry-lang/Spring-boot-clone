@@ -68,6 +68,20 @@ public class FrontServlet extends HttpServlet {
         Mapping mapping = urlMappings.get(path);
 
         if (mapping == null) {
+            // Check for patterns with placeholders
+            for (String pattern : urlMappings.keySet()) {
+                if (pattern.contains("{")) {
+                    // Convert pattern to regex: /etudiants/{id} -> /etudiants/[^/]+
+                    String regex = pattern.replaceAll("\\{[^}]+\\}", "[^/]+");
+                    if (path.matches(regex)) {
+                        mapping = urlMappings.get(pattern);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (mapping == null) {
             // Try to forward to the default servlet for static resources
             if (req.getServletPath().startsWith("/WEB-INF/") || req.getServletPath().contains(".")) {
                 req.getServletContext().getNamedDispatcher("default").forward(req, resp);
@@ -80,9 +94,59 @@ public class FrontServlet extends HttpServlet {
         try {
             Class<?> clazz = Class.forName(mapping.getClassName());
             Object controllerInstance = clazz.getConstructor().newInstance();
-            Method method = clazz.getMethod(mapping.getMethodName());
+            Method method = null;
 
-            Object result = method.invoke(controllerInstance);
+            // Find the method with the matching name
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (m.getName().equals(mapping.getMethodName())) {
+                    method = m;
+                    break;
+                }
+            }
+
+            if (method == null) {
+                throw new NoSuchMethodException(mapping.getMethodName());
+            }
+
+            Object[] args = new Object[method.getParameterCount()];
+            java.lang.reflect.Parameter[] parameters = method.getParameters();
+
+            // Iterate over method parameters to bind values
+            for (int i = 0; i < parameters.length; i++) {
+                java.lang.reflect.Parameter parameter = parameters[i];
+                String paramName = parameter.getName();
+
+                // Check if this parameter is a path variable
+                // Pattern: /hello/{name} -> we need to find the value for {name}
+                for (String pattern : urlMappings.keySet()) {
+                    if (urlMappings.get(pattern).equals(mapping) && pattern.contains("{" + paramName + "}")) {
+                        // Extract value from URL
+                        // This is a simplified extraction logic.
+                        // For /hello/{name} and path /hello/Faniry
+                        // We can split by / and find the index
+
+                        String[] patternParts = pattern.split("/");
+                        String[] pathParts = path.split("/");
+
+                        for (int j = 0; j < patternParts.length; j++) {
+                            if (patternParts[j].equals("{" + paramName + "}")) {
+                                if (j < pathParts.length) {
+                                    String value = pathParts[j];
+                                    // Basic type conversion
+                                    if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
+                                        args[i] = Integer.parseInt(value);
+                                    } else {
+                                        args[i] = value;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Object result = method.invoke(controllerInstance, args);
 
             if (result instanceof String) {
                 out.println(result);
