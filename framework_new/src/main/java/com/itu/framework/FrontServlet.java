@@ -2,6 +2,7 @@ package com.itu.framework;
 
 import com.itu.framework.helpers.ComponentScan;
 import com.itu.framework.helpers.Mapping;
+import com.itu.framework.view.ModelView;
 
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
@@ -19,6 +20,8 @@ public class FrontServlet extends HttpServlet {
 
     private Map<String, Mapping> urlMappings = new HashMap<>();
     private String controllerPackage;
+    private String viewPrefix;
+    private String viewSuffix;
 
     @Override
     public void init(ServletConfig config) throws ServletException {
@@ -27,6 +30,17 @@ public class FrontServlet extends HttpServlet {
         if (this.controllerPackage == null || this.controllerPackage.isEmpty()) {
             throw new ServletException("The 'controller-package' init-param is missing or empty in web.xml");
         }
+
+        this.viewPrefix = config.getInitParameter("view-prefix");
+        if (this.viewPrefix == null) {
+            this.viewPrefix = "";
+        }
+
+        this.viewSuffix = config.getInitParameter("view-suffix");
+        if (this.viewSuffix == null) {
+            this.viewSuffix = "";
+        }
+
         try {
             this.urlMappings = ComponentScan.scanControllers(this.controllerPackage);
         } catch (Exception e) {
@@ -44,35 +58,43 @@ public class FrontServlet extends HttpServlet {
         processRequest(req, resp);
     }
 
-    private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        String path = req.getServletPath();
-        PrintWriter out = resp.getWriter();
+    private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+    String path = req.getServletPath();
+    PrintWriter out = resp.getWriter();
 
-        Mapping mapping = urlMappings.get(path);
+    Mapping mapping = urlMappings.get(path);
 
-        if (mapping == null) {
-            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "URL not found: " + path);
-            return;
-        }
+    if (mapping == null) {
+        resp.sendError(HttpServletResponse.SC_NOT_FOUND, "URL not found: " + path);
+        return;
+    }
 
-        try {
-            Class<?> clazz = Class.forName(mapping.getClassName());
-            Object controllerInstance = clazz.getConstructor().newInstance();
-            Method method = clazz.getMethod(mapping.getMethodName());
+    try {
+        Class<?> clazz = Class.forName(mapping.getClassName());
+        Object controllerInstance = clazz.getConstructor().newInstance();
+        Method method = clazz.getMethod(mapping.getMethodName());
 
-            // on asumera pour l'instant que les méthodes retournent des String
-            Object result = method.invoke(controllerInstance);
+        Object result = method.invoke(controllerInstance);
 
-            out.println("Mapped method found for url: "+path);
+        if (result instanceof String) {
+            out.println(result);
 
-            if (result instanceof String) {
-                out.println("Method value: ");
-                out.println(result);
+        } else if (result instanceof ModelView) {
+            ModelView mv = (ModelView) result;
+            String viewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
+
+            if (getServletContext().getResource(viewPath) == null) {
+                resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Resource not found: " + viewPath);
+                return;
             }
 
-        } catch (Exception e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
-            e.printStackTrace(out);
+            req.getRequestDispatcher(viewPath).forward(req, resp);
         }
+
+    } catch (Exception e) {
+        resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
+        e.printStackTrace(out);
     }
+}
+
 }

@@ -10,6 +10,14 @@
             <param-name>controller-package</param-name>
             <param-value>com.test.controllers</param-value>
         </init-param>
+        <init-param>
+            <param-name>view-prefix</param-name>
+            <param-value>/WEB-INF/pages/</param-value>
+        </init-param>
+        <init-param>
+            <param-name>view-suffix</param-name>
+            <param-value>.html</param-value>
+        </init-param>
     </servlet>
     <servlet-mapping>
         <servlet-name>FrontServlet</servlet-name>

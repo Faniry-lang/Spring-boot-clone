@@ -10,7 +10,7 @@ TOMCAT_WEBAPPS="/home/faniry/Documents/apache-tomcat-10.1.48/webapps"
 WAR_NAME="test_project"
 
 # Chemin vers le dossier du projet (là où se trouve le dossier target)
-PROJECT_DIR="/home/faniry/Documents/windows_faniry_backup/GitHub/framework_project/test_project_new"
+PROJECT_DIR="/home/faniry/Documents/GitHub/framework_project/test_project_new"
 # --- Fin de la configuration ---
 
 
