@@ -1,6 +1,8 @@
 package com.test.controllers;
 
 import com.itu.framework.annotations.Controller;
+import com.itu.framework.annotations.GET;
+import com.itu.framework.annotations.POST;
 import com.itu.framework.annotations.UrlMapping;
 import com.itu.framework.annotations.RequestParam;
 import com.itu.framework.view.ModelView;
@@ -30,11 +32,13 @@ public class HelloController {
         return "Searching for: " + query;
     }
 
+    @GET
     @UrlMapping("/form")
     public ModelView displayForm() {
         return new ModelView("form");
     }
 
+    @POST
     @UrlMapping("/save-user")
     public ModelView saveUser(String firstName, String lastName) {
         ModelView mv = new ModelView("result");

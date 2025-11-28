@@ -11,8 +11,8 @@ import java.util.Map;
 
 public class ComponentScan {
 
-    public static Map<String, Mapping> scanControllers(String packageName) throws Exception {
-        Map<String, Mapping> urlMappings = new HashMap<>();
+    public static Map<String, java.util.List<Mapping>> scanControllers(String packageName) throws Exception {
+        Map<String, java.util.List<Mapping>> urlMappings = new HashMap<>();
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         String path = packageName.replace('.', '/');
         URL resource = classLoader.getResource(path);
@@ -37,11 +37,26 @@ public class ComponentScan {
                             String methodUrl = urlAnnotation.value();
                             String fullUrl = (baseUrl + methodUrl).replaceAll("/+", "/");
 
-                            if (urlMappings.containsKey(fullUrl)) {
-                                throw new IllegalStateException("Duplicate URL found: " + fullUrl);
+                            String httpMethod = "GET"; // Default
+                            if (method.isAnnotationPresent(com.itu.framework.annotations.POST.class)) {
+                                httpMethod = "POST";
+                            } else if (method.isAnnotationPresent(com.itu.framework.annotations.GET.class)) {
+                                httpMethod = "GET";
                             }
 
-                            urlMappings.put(fullUrl, new Mapping(clazz.getName(), method.getName()));
+                            if (!urlMappings.containsKey(fullUrl)) {
+                                urlMappings.put(fullUrl, new java.util.ArrayList<>());
+                            }
+
+                            // Check for duplicate method mapping for same URL
+                            for (Mapping m : urlMappings.get(fullUrl)) {
+                                if (m.getHttpMethod().equals(httpMethod)) {
+                                    throw new IllegalStateException(
+                                            "Duplicate URL and Method found: " + fullUrl + " " + httpMethod);
+                                }
+                            }
+
+                            urlMappings.get(fullUrl).add(new Mapping(clazz.getName(), method.getName(), httpMethod));
                         }
                     }
                 }
