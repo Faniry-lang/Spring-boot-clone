@@ -172,6 +172,11 @@ public class FrontServlet extends HttpServlet {
                 ModelView mv = (ModelView) result;
                 String viewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
 
+                // Transfer data from ModelView to Request attributes
+                for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
+                    req.setAttribute(entry.getKey(), entry.getValue());
+                }
+
                 if (getServletContext().getResource(viewPath) == null) {
                     resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Resource not found: " + viewPath);
                     return;
