@@ -10,7 +10,9 @@ public class HelloController {
 
     @UrlMapping("/greeting")
     public ModelView sayHello() {
-        return new ModelView("hello");
+        ModelView mv = new ModelView("hello");
+        mv.addObject("name", "Faniry");
+        return mv;
     }
 
     @UrlMapping("/{name}")
