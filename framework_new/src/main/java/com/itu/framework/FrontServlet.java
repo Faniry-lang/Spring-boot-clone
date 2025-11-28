@@ -18,7 +18,7 @@ import java.util.Map;
 
 public class FrontServlet extends HttpServlet {
 
-    private Map<String, Mapping> urlMappings = new HashMap<>();
+    private Map<String, java.util.List<Mapping>> urlMappings = new HashMap<>();
     private String controllerPackage;
     private String viewPrefix;
     private String viewSuffix;
@@ -65,7 +65,17 @@ public class FrontServlet extends HttpServlet {
         }
         PrintWriter out = resp.getWriter();
 
-        Mapping mapping = urlMappings.get(path);
+        Mapping mapping = null;
+        String requestMethod = req.getMethod();
+
+        if (urlMappings.containsKey(path)) {
+            for (Mapping m : urlMappings.get(path)) {
+                if (m.getHttpMethod().equalsIgnoreCase(requestMethod)) {
+                    mapping = m;
+                    break;
+                }
+            }
+        }
 
         if (mapping == null) {
             // Check for patterns with placeholders
@@ -74,8 +84,14 @@ public class FrontServlet extends HttpServlet {
                     // Convert pattern to regex: /etudiants/{id} -> /etudiants/[^/]+
                     String regex = pattern.replaceAll("\\{[^}]+\\}", "[^/]+");
                     if (path.matches(regex)) {
-                        mapping = urlMappings.get(pattern);
-                        break;
+                        for (Mapping m : urlMappings.get(pattern)) {
+                            if (m.getHttpMethod().equalsIgnoreCase(requestMethod)) {
+                                mapping = m;
+                                break;
+                            }
+                        }
+                        if (mapping != null)
+                            break;
                     }
                 }
             }
