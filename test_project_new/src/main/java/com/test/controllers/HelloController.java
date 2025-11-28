@@ -29,4 +29,17 @@ public class HelloController {
     public String search(@RequestParam("q") String query) {
         return "Searching for: " + query;
     }
+
+    @UrlMapping("/form")
+    public ModelView displayForm() {
+        return new ModelView("form");
+    }
+
+    @UrlMapping("/save-user")
+    public ModelView saveUser(String firstName, String lastName) {
+        ModelView mv = new ModelView("result");
+        mv.addObject("firstName", firstName);
+        mv.addObject("lastName", lastName);
+        return mv;
+    }
 }

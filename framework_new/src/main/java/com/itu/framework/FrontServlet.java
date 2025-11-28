@@ -132,30 +132,41 @@ public class FrontServlet extends HttpServlet {
                         }
                     }
                 } else {
-                    // Check if this parameter is a path variable
-                    // Pattern: /hello/{name} -> we need to find the value for {name}
-                    for (String pattern : urlMappings.keySet()) {
-                        if (urlMappings.get(pattern).equals(mapping) && pattern.contains("{" + paramName + "}")) {
-                            // Extract value from URL
-                            // This is a simplified extraction logic.
-                            // For /hello/{name} and path /hello/Faniry
-                            // We can split by / and find the index
+                    // Check if parameter name matches a request parameter
+                    String value = req.getParameter(paramName);
+                    if (value != null) {
+                        if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
+                            args[i] = Integer.parseInt(value);
+                        } else {
+                            args[i] = value;
+                        }
+                    } else {
+                        // Check if this parameter is a path variable
+                        // Pattern: /hello/{name} -> we need to find the value for {name}
+                        for (String pattern : urlMappings.keySet()) {
+                            if (urlMappings.get(pattern).equals(mapping) && pattern.contains("{" + paramName + "}")) {
+                                // Extract value from URL
+                                // This is a simplified extraction logic.
+                                // For /hello/{name} and path /hello/Faniry
+                                // We can split by / and find the index
 
-                            String[] patternParts = pattern.split("/");
-                            String[] pathParts = path.split("/");
+                                String[] patternParts = pattern.split("/");
+                                String[] pathParts = path.split("/");
 
-                            for (int j = 0; j < patternParts.length; j++) {
-                                if (patternParts[j].equals("{" + paramName + "}")) {
-                                    if (j < pathParts.length) {
-                                        String value = pathParts[j];
-                                        // Basic type conversion
-                                        if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
-                                            args[i] = Integer.parseInt(value);
-                                        } else {
-                                            args[i] = value;
+                                for (int j = 0; j < patternParts.length; j++) {
+                                    if (patternParts[j].equals("{" + paramName + "}")) {
+                                        if (j < pathParts.length) {
+                                            String pathValue = pathParts[j];
+                                            // Basic type conversion
+                                            if (parameter.getType() == Integer.class
+                                                    || parameter.getType() == int.class) {
+                                                args[i] = Integer.parseInt(pathValue);
+                                            } else {
+                                                args[i] = pathValue;
+                                            }
                                         }
+                                        break;
                                     }
-                                    break;
                                 }
                             }
                         }
