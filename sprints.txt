@@ -32,3 +32,16 @@ sprint 7:
                 Class class;
                 Method method;
                 String httpMethod; // POST OU GET
+
+sprint 8 :
+    -Pour les méthodes post qui recoivent des objets en arguments
+    -depuis le formulaire on envoie des inputs, on transforme ça en linkedhashmap dans le FrontServlet  puis on crée l'instance de l'objet avec les valeurs envoyées depuis le front et on execute la fonction 
+
+    -test: créer une page html dans le projet de test (test_project_new) avec un formulaire d'insertion d'une classe Paiement par exemple, 
+        -créer la classe Paiement et une autre classe Utilisateur
+            -dans Paiement on aura Utilisateur 
+        -dans ce test on créera les données en dur, pas de persistence
+        -créer un controller pour renvoyer une liste des utilisateurs dont les données seront crées à la volée dans le controller lui même pour le test
+        -créer un controller dans le projet de test pour insertion de paiement 
+        -dans la page html -> liste déroulante de utilisateur dans le champ utilisateur du formulaire 
+        -le formulaire renverra vers l'endpoint du controller d'insertion de paiement et dans la méthode d'insertion de paiement on retournera un ModelView avec le paiement nouvellement crée redirigeant vers une page paiement-details.html et on affiche le paiement crée.
