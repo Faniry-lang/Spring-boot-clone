@@ -17,6 +17,16 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Enumeration;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Collection;
+import java.util.Arrays;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 
 public class FrontServlet extends HttpServlet {
 
@@ -127,13 +137,13 @@ public class FrontServlet extends HttpServlet {
             }
 
             // Build a parameters LinkedHashMap (preserves insertion order)
-            LinkedHashMap<String, String> paramsMap = new LinkedHashMap<>();
+            LinkedHashMap<String, String[]> paramsMap = new LinkedHashMap<>();
             Enumeration<String> paramNames = req.getParameterNames();
             while (paramNames.hasMoreElements()) {
                 String pname = paramNames.nextElement();
                 String[] values = req.getParameterValues(pname);
                 if (values != null && values.length > 0) {
-                    paramsMap.put(pname, values[0]);
+                    paramsMap.put(pname, values);
                 }
             }
 
@@ -162,7 +172,8 @@ public class FrontServlet extends HttpServlet {
                     }
                 } else {
                     // Try to bind primitive / String from request parameters map
-                    String value = paramsMap.get(paramName);
+                    String[] pvals = paramsMap.get(paramName);
+                    String value = (pvals != null && pvals.length > 0) ? pvals[0] : null;
                     if (value != null) {
                         if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
                             args[i] = Integer.parseInt(value);
@@ -231,7 +242,7 @@ public class FrontServlet extends HttpServlet {
     }
 
     // Instantiate an object and populate its fields from params map.
-    private Object instantiateObjectFromParams(Class<?> type, String paramPrefix, LinkedHashMap<String, String> params) throws Exception {
+    private Object instantiateObjectFromParams(Class<?> type, String paramPrefix, LinkedHashMap<String, String[]> params) throws Exception {
         Object instance = type.getConstructor().newInstance();
 
         java.lang.reflect.Field[] fields = type.getDeclaredFields();
@@ -242,15 +253,96 @@ public class FrontServlet extends HttpServlet {
             String keyWithPrefix = paramPrefix + "." + fieldName;
             String plainKey = fieldName;
 
-            String value = null;
+            String[] rawValues = null;
             if (params.containsKey(keyWithPrefix)) {
-                value = params.get(keyWithPrefix);
+                rawValues = params.get(keyWithPrefix);
             } else if (params.containsKey(plainKey)) {
-                value = params.get(plainKey);
+                rawValues = params.get(plainKey);
             }
 
             Class<?> fType = field.getType();
-            if (value != null) {
+
+            // Handle collections (List/Set)
+            if (Collection.class.isAssignableFrom(fType)) {
+                // Determine element type if available
+                Class<?> elementType = String.class;
+                Type gType = field.getGenericType();
+                if (gType instanceof ParameterizedType) {
+                    Type[] args = ((ParameterizedType) gType).getActualTypeArguments();
+                    if (args != null && args.length > 0) {
+                        if (args[0] instanceof Class) {
+                            elementType = (Class<?>) args[0];
+                        }
+                    }
+                }
+
+                Collection<Object> collection;
+                if (Set.class.isAssignableFrom(fType)) {
+                    collection = new HashSet<>();
+                } else {
+                    collection = new ArrayList<>();
+                }
+
+                // Case 1: repeated parameter names: keyWithPrefix or plainKey -> multiple values
+                if (rawValues != null && rawValues.length > 1) {
+                    for (String rv : rawValues) {
+                        Object converted = convertValue(rv, elementType);
+                        collection.add(converted);
+                    }
+                } else {
+                    // Case 2: indexed nested objects like prefix.field[0].sub
+                    String nestedPrefix = paramPrefix + "." + fieldName;
+                    // Find indices
+                    java.util.Set<Integer> indices = new java.util.TreeSet<>();
+                    for (String k : params.keySet()) {
+                        if (k.startsWith(nestedPrefix + "[")) {
+                            int start = k.indexOf('[') + 1;
+                            int end = k.indexOf(']', start);
+                            if (start > 0 && end > start) {
+                                try {
+                                    int idx = Integer.parseInt(k.substring(start, end));
+                                    indices.add(idx);
+                                } catch (NumberFormatException ignored) {}
+                            }
+                        } else if (k.startsWith(fieldName + "[")) {
+                            int start = k.indexOf('[') + 1;
+                            int end = k.indexOf(']', start);
+                            if (start > 0 && end > start) {
+                                try {
+                                    int idx = Integer.parseInt(k.substring(start, end));
+                                    indices.add(idx);
+                                } catch (NumberFormatException ignored) {}
+                            }
+                        }
+                    }
+
+                    if (!indices.isEmpty()) {
+                        for (int idx : indices) {
+                            String elementPrefix = nestedPrefix + "[" + idx + "]";
+                            Object nested = instantiateObjectFromParams(elementType, elementPrefix, params);
+                            collection.add(nested);
+                        }
+                    }
+                }
+
+                // Set collection via setter or direct
+                String setterName = "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+                try {
+                    java.lang.reflect.Method setter = type.getMethod(setterName, field.getType());
+                    setter.invoke(instance, collection);
+                    continue;
+                } catch (NoSuchMethodException ignored) {
+                }
+
+                boolean accessible = field.canAccess(instance);
+                field.setAccessible(true);
+                field.set(instance, collection);
+                field.setAccessible(accessible);
+                continue;
+            }
+
+            if (rawValues != null && rawValues.length > 0) {
+                String value = rawValues[0];
                 // Try setter first
                 String setterName = "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
                 try {
@@ -298,6 +390,17 @@ public class FrontServlet extends HttpServlet {
             return Long.parseLong(value);
         } else if (targetType == Double.class || targetType == double.class) {
             return Double.parseDouble(value);
+        } else if (targetType == Date.class) {
+            // try multiple common formats
+            String[] formats = new String[]{"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyy-MM-dd'T'HH:mm:ss",
+                    "yyyy-MM-dd"};
+            for (String fmt : formats) {
+                try {
+                    SimpleDateFormat sdf = new SimpleDateFormat(fmt);
+                    return sdf.parse(value);
+                } catch (Exception ignored) {
+                }
+            }
         }
         // Fallback: return the raw string
         return value;
