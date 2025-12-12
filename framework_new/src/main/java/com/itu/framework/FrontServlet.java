@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Enumeration;
 
 public class FrontServlet extends HttpServlet {
 
@@ -124,6 +126,17 @@ public class FrontServlet extends HttpServlet {
                 throw new NoSuchMethodException(mapping.getMethodName());
             }
 
+            // Build a parameters LinkedHashMap (preserves insertion order)
+            LinkedHashMap<String, String> paramsMap = new LinkedHashMap<>();
+            Enumeration<String> paramNames = req.getParameterNames();
+            while (paramNames.hasMoreElements()) {
+                String pname = paramNames.nextElement();
+                String[] values = req.getParameterValues(pname);
+                if (values != null && values.length > 0) {
+                    paramsMap.put(pname, values[0]);
+                }
+            }
+
             Object[] args = new Object[method.getParameterCount()];
             java.lang.reflect.Parameter[] parameters = method.getParameters();
 
@@ -148,8 +161,8 @@ public class FrontServlet extends HttpServlet {
                         }
                     }
                 } else {
-                    // Check if parameter name matches a request parameter
-                    String value = req.getParameter(paramName);
+                    // Try to bind primitive / String from request parameters map
+                    String value = paramsMap.get(paramName);
                     if (value != null) {
                         if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
                             args[i] = Integer.parseInt(value);
@@ -157,31 +170,30 @@ public class FrontServlet extends HttpServlet {
                             args[i] = value;
                         }
                     } else {
-                        // Check if this parameter is a path variable
-                        // Pattern: /hello/{name} -> we need to find the value for {name}
-                        for (String pattern : urlMappings.keySet()) {
-                            if (urlMappings.get(pattern).equals(mapping) && pattern.contains("{" + paramName + "}")) {
-                                // Extract value from URL
-                                // This is a simplified extraction logic.
-                                // For /hello/{name} and path /hello/Faniry
-                                // We can split by / and find the index
+                        // Try to bind as an object: build instance from paramsMap
+                        Class<?> pType = parameter.getType();
+                        if (!pType.isPrimitive() && pType != String.class && pType != Integer.class
+                                && pType != int.class) {
+                            args[i] = instantiateObjectFromParams(pType, paramName, paramsMap);
+                        } else {
+                            // Check if this parameter is a path variable
+                            for (String pattern : urlMappings.keySet()) {
+                                if (urlMappings.get(pattern).equals(mapping) && pattern.contains("{" + paramName + "}")) {
+                                    String[] patternParts = pattern.split("/");
+                                    String[] pathParts = path.split("/");
 
-                                String[] patternParts = pattern.split("/");
-                                String[] pathParts = path.split("/");
-
-                                for (int j = 0; j < patternParts.length; j++) {
-                                    if (patternParts[j].equals("{" + paramName + "}")) {
-                                        if (j < pathParts.length) {
-                                            String pathValue = pathParts[j];
-                                            // Basic type conversion
-                                            if (parameter.getType() == Integer.class
-                                                    || parameter.getType() == int.class) {
-                                                args[i] = Integer.parseInt(pathValue);
-                                            } else {
-                                                args[i] = pathValue;
+                                    for (int j = 0; j < patternParts.length; j++) {
+                                        if (patternParts[j].equals("{" + paramName + "}")) {
+                                            if (j < pathParts.length) {
+                                                String pathValue = pathParts[j];
+                                                if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
+                                                    args[i] = Integer.parseInt(pathValue);
+                                                } else {
+                                                    args[i] = pathValue;
+                                                }
                                             }
+                                            break;
                                         }
-                                        break;
                                     }
                                 }
                             }
@@ -216,6 +228,79 @@ public class FrontServlet extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
             e.printStackTrace(out);
         }
+    }
+
+    // Instantiate an object and populate its fields from params map.
+    private Object instantiateObjectFromParams(Class<?> type, String paramPrefix, LinkedHashMap<String, String> params) throws Exception {
+        Object instance = type.getConstructor().newInstance();
+
+        java.lang.reflect.Field[] fields = type.getDeclaredFields();
+        for (java.lang.reflect.Field field : fields) {
+            String fieldName = field.getName();
+
+            // Candidates: prefix.fieldName, fieldName
+            String keyWithPrefix = paramPrefix + "." + fieldName;
+            String plainKey = fieldName;
+
+            String value = null;
+            if (params.containsKey(keyWithPrefix)) {
+                value = params.get(keyWithPrefix);
+            } else if (params.containsKey(plainKey)) {
+                value = params.get(plainKey);
+            }
+
+            Class<?> fType = field.getType();
+            if (value != null) {
+                // Try setter first
+                String setterName = "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+                try {
+                    java.lang.reflect.Method setter = type.getMethod(setterName, fType);
+                    Object converted = convertValue(value, fType);
+                    setter.invoke(instance, converted);
+                    continue;
+                } catch (NoSuchMethodException ignored) {
+                }
+
+                // Otherwise set field directly
+                boolean accessible = field.canAccess(instance);
+                field.setAccessible(true);
+                Object converted = convertValue(value, fType);
+                field.set(instance, converted);
+                field.setAccessible(accessible);
+            } else {
+                // Maybe nested object fields exist: check any key starting with prefix.fieldName.
+                String nestedPrefix = paramPrefix + "." + fieldName;
+                boolean hasNested = false;
+                for (String k : params.keySet()) {
+                    if (k.startsWith(nestedPrefix + ".") || k.startsWith(fieldName + ".") ) {
+                        hasNested = true;
+                        break;
+                    }
+                }
+                if (hasNested) {
+                    Object nested = instantiateObjectFromParams(fType, nestedPrefix, params);
+                    boolean accessible = field.canAccess(instance);
+                    field.setAccessible(true);
+                    field.set(instance, nested);
+                    field.setAccessible(accessible);
+                }
+            }
+        }
+        return instance;
+    }
+
+    private Object convertValue(String value, Class<?> targetType) {
+        if (targetType == String.class) {
+            return value;
+        } else if (targetType == Integer.class || targetType == int.class) {
+            return Integer.parseInt(value);
+        } else if (targetType == Long.class || targetType == long.class) {
+            return Long.parseLong(value);
+        } else if (targetType == Double.class || targetType == double.class) {
+            return Double.parseDouble(value);
+        }
+        // Fallback: return the raw string
+        return value;
     }
 
 }
