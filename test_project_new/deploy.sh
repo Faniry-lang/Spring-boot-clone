@@ -7,6 +7,8 @@
 TOMCAT_WEBAPPS="/home/faniry/Documents/apache-tomcat-10.1.48/webapps"
 
 # Nom du fichier .war (sans l'extension)
+# We deploy as the ROOT context so the app is reachable at '/'.
+# The source WAR can keep its normal name; we copy it to ROOT.war on the Tomcat webapps.
 WAR_NAME="test_project"
 
 # Chemin vers le dossier du projet (là où se trouve le dossier target)
@@ -16,8 +18,9 @@ PROJECT_DIR="/home/faniry/Documents/GitHub/framework_project/test_project_new"
 
 # Chemin complet vers le fichier .war source et le dossier de destination
 SOURCE_WAR="$PROJECT_DIR/target/$WAR_NAME.war"
-DEST_WAR_FILE="$TOMCAT_WEBAPPS/$WAR_NAME.war"
-DEST_APP_DIR="$TOMCAT_WEBAPPS/$WAR_NAME"
+# Always deploy to ROOT.war so the application is mounted at '/'
+DEST_WAR_FILE="$TOMCAT_WEBAPPS/ROOT.war"
+DEST_APP_DIR="$TOMCAT_WEBAPPS/ROOT"
 
 echo "Début du déploiement..."
 
@@ -32,16 +35,16 @@ fi
 echo "Suppression des anciennes versions..."
 if [ -f "$DEST_WAR_FILE" ]; then
     rm -f "$DEST_WAR_FILE"
-    echo "Ancien .war supprimé."
+    echo "Ancien ROOT.war supprimé."
 fi
 
 if [ -d "$DEST_APP_DIR" ]; then
     rm -rf "$DEST_APP_DIR"
-    echo "Ancien dossier de l'application supprimé."
+    echo "Ancien dossier ROOT supprimé."
 fi
 
-# Copier le nouveau .war
-echo "Copie du nouveau fichier .war vers $TOMCAT_WEBAPPS..."
-cp "$SOURCE_WAR" "$TOMCAT_WEBAPPS/"
+# Copier le nouveau .war sous le nom ROOT.war
+echo "Copie du nouveau fichier .war vers $DEST_WAR_FILE..."
+cp "$SOURCE_WAR" "$DEST_WAR_FILE"
 
 echo "Déploiement terminé avec succès."
