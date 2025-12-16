@@ -45,3 +45,15 @@ sprint 8 :
         -créer un controller dans le projet de test pour insertion de paiement 
         -dans la page html -> liste déroulante de utilisateur dans le champ utilisateur du formulaire 
         -le formulaire renverra vers l'endpoint du controller d'insertion de paiement et dans la méthode d'insertion de paiement on retournera un ModelView avec le paiement nouvellement crée redirigeant vers une page paiement-details.html et on affiche le paiement crée.
+
+sprint 9:
+    -JSON
+
+sprint 10:
+    - FrontServlet:
+        jerena hoe misy fichier attaché ve anaty request
+            - getParts()
+        - alaina anarana + tableau de bytes (clé valeur)
+        - omena anle méthode de controller Map<String, Byte[]> (filename, bytes)
+        - atao argument anle méthode de controller
+        

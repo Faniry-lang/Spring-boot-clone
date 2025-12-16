@@ -71,47 +71,14 @@ public class FrontServlet extends HttpServlet {
     }
 
     private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-        String path = req.getPathInfo();
-        if (path == null) {
-            path = req.getServletPath();
-        }
+        String path = computeRequestPath(req);
         PrintWriter out = resp.getWriter();
 
-        Mapping mapping = null;
         String requestMethod = req.getMethod();
-
-        if (urlMappings.containsKey(path)) {
-            for (Mapping m : urlMappings.get(path)) {
-                if (m.getHttpMethod().equalsIgnoreCase(requestMethod)) {
-                    mapping = m;
-                    break;
-                }
-            }
-        }
+        Mapping mapping = findMappingForPath(path, requestMethod);
 
         if (mapping == null) {
-            // Check for patterns with placeholders
-            for (String pattern : urlMappings.keySet()) {
-                if (pattern.contains("{")) {
-                    // Convert pattern to regex: /etudiants/{id} -> /etudiants/[^/]+
-                    String regex = pattern.replaceAll("\\{[^}]+\\}", "[^/]+");
-                    if (path.matches(regex)) {
-                        for (Mapping m : urlMappings.get(pattern)) {
-                            if (m.getHttpMethod().equalsIgnoreCase(requestMethod)) {
-                                mapping = m;
-                                break;
-                            }
-                        }
-                        if (mapping != null)
-                            break;
-                    }
-                }
-            }
-        }
-
-        if (mapping == null) {
-            // Try to forward to the default servlet for static resources
-            if (req.getServletPath().startsWith("/WEB-INF/") || req.getServletPath().contains(".")) {
+            if (isStaticResourceRequest(req)) {
                 req.getServletContext().getNamedDispatcher("default").forward(req, resp);
                 return;
             }
@@ -120,124 +87,176 @@ public class FrontServlet extends HttpServlet {
         }
 
         try {
-            Class<?> clazz = Class.forName(mapping.getClassName());
-            Object controllerInstance = clazz.getConstructor().newInstance();
-            Method method = null;
-
-            // Find the method with the matching name
-            for (Method m : clazz.getDeclaredMethods()) {
-                if (m.getName().equals(mapping.getMethodName())) {
-                    method = m;
-                    break;
-                }
-            }
+            Class<?> controllerClass = Class.forName(mapping.getClassName());
+            Object controllerInstance = controllerClass.getConstructor().newInstance();
+            Method method = findMethodForMapping(controllerClass, mapping.getMethodName());
 
             if (method == null) {
                 throw new NoSuchMethodException(mapping.getMethodName());
             }
 
-            // Build a parameters LinkedHashMap (preserves insertion order)
-            LinkedHashMap<String, String[]> paramsMap = new LinkedHashMap<>();
-            Enumeration<String> paramNames = req.getParameterNames();
-            while (paramNames.hasMoreElements()) {
-                String pname = paramNames.nextElement();
-                String[] values = req.getParameterValues(pname);
-                if (values != null && values.length > 0) {
-                    paramsMap.put(pname, values);
-                }
-            }
-
-            Object[] args = new Object[method.getParameterCount()];
-            java.lang.reflect.Parameter[] parameters = method.getParameters();
-
-            // Iterate over method parameters to bind values
-            for (int i = 0; i < parameters.length; i++) {
-                java.lang.reflect.Parameter parameter = parameters[i];
-                String paramName = parameter.getName();
-
-                // Check if parameter has @RequestParam annotation
-                if (parameter.isAnnotationPresent(com.itu.framework.annotations.RequestParam.class)) {
-                    com.itu.framework.annotations.RequestParam requestParam = parameter
-                            .getAnnotation(com.itu.framework.annotations.RequestParam.class);
-                    String requestParamName = requestParam.value();
-                    String value = req.getParameter(requestParamName);
-
-                    if (value != null) {
-                        // Basic type conversion
-                        if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
-                            args[i] = Integer.parseInt(value);
-                        } else {
-                            args[i] = value;
-                        }
-                    }
-                } else {
-                    // Try to bind primitive / String from request parameters map
-                    String[] pvals = paramsMap.get(paramName);
-                    String value = (pvals != null && pvals.length > 0) ? pvals[0] : null;
-                    if (value != null) {
-                        if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
-                            args[i] = Integer.parseInt(value);
-                        } else {
-                            args[i] = value;
-                        }
-                    } else {
-                        // Try to bind as an object: build instance from paramsMap
-                        Class<?> pType = parameter.getType();
-                        if (!pType.isPrimitive() && pType != String.class && pType != Integer.class
-                                && pType != int.class) {
-                            args[i] = instantiateObjectFromParams(pType, paramName, paramsMap);
-                        } else {
-                            // Check if this parameter is a path variable
-                            for (String pattern : urlMappings.keySet()) {
-                                if (urlMappings.get(pattern).equals(mapping) && pattern.contains("{" + paramName + "}")) {
-                                    String[] patternParts = pattern.split("/");
-                                    String[] pathParts = path.split("/");
-
-                                    for (int j = 0; j < patternParts.length; j++) {
-                                        if (patternParts[j].equals("{" + paramName + "}")) {
-                                            if (j < pathParts.length) {
-                                                String pathValue = pathParts[j];
-                                                if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
-                                                    args[i] = Integer.parseInt(pathValue);
-                                                } else {
-                                                    args[i] = pathValue;
-                                                }
-                                            }
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            LinkedHashMap<String, String[]> paramsMap = buildParamsMap(req);
+            Object[] args = bindMethodArguments(method, paramsMap, path, mapping, req);
 
             Object result = method.invoke(controllerInstance, args);
-
-            if (result instanceof String) {
-                out.println(result);
-
-            } else if (result instanceof ModelView) {
-                ModelView mv = (ModelView) result;
-                String viewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
-
-                // Transfer data from ModelView to Request attributes
-                for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
-                    req.setAttribute(entry.getKey(), entry.getValue());
-                }
-
-                if (getServletContext().getResource(viewPath) == null) {
-                    resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Resource not found: " + viewPath);
-                    return;
-                }
-
-                req.getRequestDispatcher(viewPath).forward(req, resp);
-            }
+            processControllerResult(result, req, resp, out);
 
         } catch (Exception e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
             e.printStackTrace(out);
+        }
+    }
+
+    private String computeRequestPath(HttpServletRequest req) {
+        String path = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        if (contextPath != null && !contextPath.isEmpty() && path.startsWith(contextPath)) {
+            path = path.substring(contextPath.length());
+        }
+        if (path == null || path.isEmpty()) {
+            path = "/";
+        }
+        return path;
+    }
+
+    private Mapping findMappingForPath(String path, String requestMethod) {
+        // direct match
+        if (urlMappings.containsKey(path)) {
+            for (Mapping m : urlMappings.get(path)) {
+                if (m.getHttpMethod().equalsIgnoreCase(requestMethod)) {
+                    return m;
+                }
+            }
+        }
+
+        // pattern match with placeholders
+        for (String pattern : urlMappings.keySet()) {
+            if (pattern.contains("{")) {
+                String regex = pattern.replaceAll("\\{[^}]+\\}", "[^/]+");
+                if (path.matches(regex)) {
+                    for (Mapping m : urlMappings.get(pattern)) {
+                        if (m.getHttpMethod().equalsIgnoreCase(requestMethod)) {
+                            return m;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isStaticResourceRequest(HttpServletRequest req) {
+        String servletPath = req.getServletPath();
+        return servletPath != null && (servletPath.startsWith("/WEB-INF/") || servletPath.contains("."));
+    }
+
+    private Method findMethodForMapping(Class<?> controllerClass, String methodName) {
+        for (Method m : controllerClass.getDeclaredMethods()) {
+            if (m.getName().equals(methodName)) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    private LinkedHashMap<String, String[]> buildParamsMap(HttpServletRequest req) {
+        LinkedHashMap<String, String[]> paramsMap = new LinkedHashMap<>();
+        Enumeration<String> paramNames = req.getParameterNames();
+        while (paramNames.hasMoreElements()) {
+            String pname = paramNames.nextElement();
+            String[] values = req.getParameterValues(pname);
+            if (values != null && values.length > 0) {
+                paramsMap.put(pname, values);
+            }
+        }
+        return paramsMap;
+    }
+
+    private Object[] bindMethodArguments(Method method, LinkedHashMap<String, String[]> paramsMap, String path, Mapping mapping, HttpServletRequest req) throws Exception {
+        java.lang.reflect.Parameter[] parameters = method.getParameters();
+        Object[] args = new Object[parameters.length];
+
+        for (int i = 0; i < parameters.length; i++) {
+            java.lang.reflect.Parameter parameter = parameters[i];
+            String paramName = parameter.getName();
+
+            if (parameter.isAnnotationPresent(com.itu.framework.annotations.RequestParam.class)) {
+                com.itu.framework.annotations.RequestParam requestParam = parameter
+                        .getAnnotation(com.itu.framework.annotations.RequestParam.class);
+                String requestParamName = requestParam.value();
+                String value = req.getParameter(requestParamName);
+
+                if (value != null) {
+                    if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
+                        args[i] = Integer.parseInt(value);
+                    } else {
+                        args[i] = value;
+                    }
+                }
+                continue;
+            }
+
+            String[] pvals = paramsMap.get(paramName);
+            String value = (pvals != null && pvals.length > 0) ? pvals[0] : null;
+            if (value != null) {
+                if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
+                    args[i] = Integer.parseInt(value);
+                } else {
+                    args[i] = value;
+                }
+                continue;
+            }
+
+            Class<?> pType = parameter.getType();
+            if (!pType.isPrimitive() && pType != String.class && pType != Integer.class && pType != int.class) {
+                args[i] = instantiateObjectFromParams(pType, paramName, paramsMap);
+                continue;
+            }
+
+            // Check for path variable: pattern that contains {paramName} and whose mapping list contains this mapping
+            for (String pattern : urlMappings.keySet()) {
+                if (pattern.contains("{" + paramName + "}") && urlMappings.get(pattern).contains(mapping)) {
+                    String[] patternParts = pattern.split("/");
+                    String[] pathParts = path.split("/");
+
+                    for (int j = 0; j < patternParts.length; j++) {
+                        if (patternParts[j].equals("{" + paramName + "}")) {
+                            if (j < pathParts.length) {
+                                String pathValue = pathParts[j];
+                                if (parameter.getType() == Integer.class || parameter.getType() == int.class) {
+                                    args[i] = Integer.parseInt(pathValue);
+                                } else {
+                                    args[i] = pathValue;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return args;
+    }
+
+    private void processControllerResult(Object result, HttpServletRequest req, HttpServletResponse resp, PrintWriter out) throws Exception {
+        if (result instanceof String) {
+            out.println(result);
+        } else if (result instanceof ModelView) {
+            ModelView mv = (ModelView) result;
+            String viewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
+
+            // Transfer data from ModelView to Request attributes
+            for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
+                req.setAttribute(entry.getKey(), entry.getValue());
+            }
+
+            if (getServletContext().getResource(viewPath) == null) {
+                resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Resource not found: " + viewPath);
+                return;
+            }
+
+            req.getRequestDispatcher(viewPath).forward(req, resp);
         }
     }
 
