@@ -27,6 +27,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import com.itu.framework.annotations.Json;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class FrontServlet extends HttpServlet {
 
@@ -99,7 +101,13 @@ public class FrontServlet extends HttpServlet {
             Object[] args = bindMethodArguments(method, paramsMap, path, mapping, req);
 
             Object result = method.invoke(controllerInstance, args);
-            processControllerResult(result, req, resp, out);
+
+            // If the controller method is annotated with @Json, serialize the result to JSON.
+            if (method.isAnnotationPresent(Json.class)) {
+                writeJsonResponse(result, resp);
+            } else {
+                processControllerResult(result, req, resp, out);
+            }
 
         } catch (Exception e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
@@ -257,6 +265,19 @@ public class FrontServlet extends HttpServlet {
             }
 
             req.getRequestDispatcher(viewPath).forward(req, resp);
+        }
+    }
+
+    private void writeJsonResponse(Object result, HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/json;charset=UTF-8");
+        ObjectMapper mapper = new ObjectMapper();
+
+        // If result is ModelView, serialize the data map; otherwise serialize the object directly.
+        if (result instanceof ModelView) {
+            ModelView mv = (ModelView) result;
+            mapper.writeValue(resp.getWriter(), mv.getData());
+        } else {
+            mapper.writeValue(resp.getWriter(), result);
         }
     }
 

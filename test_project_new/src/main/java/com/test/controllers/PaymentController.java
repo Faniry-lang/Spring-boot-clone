@@ -7,6 +7,7 @@ import com.itu.framework.annotations.UrlMapping;
 import com.itu.framework.view.ModelView;
 import com.test.models.Paiement;
 import com.test.models.Utilisateur;
+import com.itu.framework.annotations.Json;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,5 +36,12 @@ public class PaymentController {
         ModelView mv = new ModelView("paiement-details");
         mv.addObject("paiement", paiement);
         return mv;
+    }
+
+    @Json
+    @GET
+    @UrlMapping("/user-json")
+    public Utilisateur getSampleUserJson() {
+        return new Utilisateur(99, "JsonUser");
     }
 }

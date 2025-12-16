@@ -22,6 +22,15 @@
             <version>6.0.0</version>
             <scope>provided</scope>
         </dependency>
+        <!-- Jackson is required at compile time for JSON support; mark provided so the consuming webapp
+             must supply the runtime dependency. This keeps the framework compiled against Jackson but
+             prevents bundling it automatically into the framework jar. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.15.2</version>
+            <scope>provided</scope>
+        </dependency>
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
