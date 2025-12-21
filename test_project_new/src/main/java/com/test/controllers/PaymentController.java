@@ -56,7 +56,6 @@ public class PaymentController {
     public ModelView handleUpload(java.util.Map<String, byte[]> files) {
         ModelView mv = new ModelView("upload-result");
         if (files != null && !files.isEmpty()) {
-            // pick the first entry (filename -> bytes)
             java.util.Map.Entry<String, byte[]> e = files.entrySet().iterator().next();
             String filename = e.getKey();
             byte[] bytes = e.getValue();
