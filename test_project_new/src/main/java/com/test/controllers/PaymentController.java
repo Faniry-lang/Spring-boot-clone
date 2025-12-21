@@ -8,6 +8,7 @@ import com.itu.framework.view.ModelView;
 import com.test.models.Paiement;
 import com.test.models.Utilisateur;
 import com.itu.framework.annotations.Json;
+import com.itu.framework.upload.UploadedFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,5 +44,22 @@ public class PaymentController {
     @UrlMapping("/user-json")
     public Utilisateur getSampleUserJson() {
         return new Utilisateur(99, "JsonUser");
+    }
+
+    @GET
+    @UrlMapping("/upload-form")
+    public ModelView uploadForm() {
+        return new ModelView("upload-form");
+    }
+
+    @POST
+    @UrlMapping("/upload")
+    public ModelView handleUpload(UploadedFile file) {
+        ModelView mv = new ModelView("upload-result");
+        if (file != null) {
+            mv.addObject("filename", file.getFileName());
+            mv.addObject("size", file.getContent() != null ? file.getContent().length : 0);
+        }
+        return mv;
     }
 }
