@@ -19,22 +19,17 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Collection;
-import java.util.Arrays;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import com.itu.framework.annotations.Json;
-import com.itu.framework.upload.UploadedFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.LinkedList;
 
 @MultipartConfig
 public class FrontServlet extends HttpServlet {
@@ -179,8 +174,6 @@ public class FrontServlet extends HttpServlet {
 
         String contentType = req.getContentType();
         if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
-            // Parse multipart request: collect form fields and file parts. For files we store a map
-            // keyed by original filename -> byte[] (first occurrence wins).
             Map<String, byte[]> uploadedBytes = new HashMap<>();
             try {
                 for (Part part : req.getParts()) {
@@ -202,7 +195,6 @@ public class FrontServlet extends HttpServlet {
                     }
                 }
             } catch (Exception e) {
-                // fall back to standard parameter parsing
                 Enumeration<String> paramNames = req.getParameterNames();
                 while (paramNames.hasMoreElements()) {
                     String pname = paramNames.nextElement();
@@ -213,7 +205,6 @@ public class FrontServlet extends HttpServlet {
                 }
             }
 
-            // expose uploaded files (filename -> bytes) to binding code
             req.setAttribute("uploadedFilesBytes", uploadedBytes);
             return paramsMap;
         }
