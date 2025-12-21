@@ -8,7 +8,6 @@ import com.itu.framework.view.ModelView;
 import com.test.models.Paiement;
 import com.test.models.Utilisateur;
 import com.itu.framework.annotations.Json;
-import com.itu.framework.upload.UploadedFile;
 
 import java.util.ArrayList;
 import java.util.List;
