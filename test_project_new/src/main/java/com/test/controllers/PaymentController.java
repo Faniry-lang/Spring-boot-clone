@@ -44,4 +44,24 @@ public class PaymentController {
     public Utilisateur getSampleUserJson() {
         return new Utilisateur(99, "JsonUser");
     }
+
+    @GET
+    @UrlMapping("/upload-form")
+    public ModelView uploadForm() {
+        return new ModelView("upload-form");
+    }
+
+    @POST
+    @UrlMapping("/upload")
+    public ModelView handleUpload(java.util.Map<String, byte[]> files) {
+        ModelView mv = new ModelView("upload-result");
+        if (files != null && !files.isEmpty()) {
+            java.util.Map.Entry<String, byte[]> e = files.entrySet().iterator().next();
+            String filename = e.getKey();
+            byte[] bytes = e.getValue();
+            mv.addObject("filename", filename);
+            mv.addObject("size", bytes != null ? bytes.length : 0);
+        }
+        return mv;
+    }
 }

@@ -50,10 +50,11 @@ sprint 9:
     -JSON
 
 sprint 10:
-    - FrontServlet:
-        jerena hoe misy fichier attaché ve anaty request
-            - getParts()
-        - alaina anarana + tableau de bytes (clé valeur)
-        - omena anle méthode de controller Map<String, Byte[]> (filename, bytes)
-        - atao argument anle méthode de controller
+    - upload de fichier
+        - on créear un formulaire avec enctype="multipart/form-data"
+        - on construit un map dans FrontServlet
+            - on récupère les parties du fichier avec request.getParts()
+            - on crée un tableau de bytes pour chaque partie
+            - on crée une Map<String, Byte[]> avec le nom du fichier et le tableau de bytes
+        - on crée un controller qui reçoit le fichier en argument
         

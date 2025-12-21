@@ -6,9 +6,11 @@ import com.itu.framework.view.ModelView;
 
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -17,19 +19,19 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Collection;
-import java.util.Arrays;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import com.itu.framework.annotations.Json;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.InputStream;
 
+@MultipartConfig
 public class FrontServlet extends HttpServlet {
 
     private Map<String, java.util.List<Mapping>> urlMappings = new HashMap<>();
@@ -169,6 +171,44 @@ public class FrontServlet extends HttpServlet {
 
     private LinkedHashMap<String, String[]> buildParamsMap(HttpServletRequest req) {
         LinkedHashMap<String, String[]> paramsMap = new LinkedHashMap<>();
+
+        String contentType = req.getContentType();
+        if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
+            Map<String, byte[]> uploadedBytes = new HashMap<>();
+            try {
+                for (Part part : req.getParts()) {
+                    String name = part.getName();
+                    String submitted = part.getSubmittedFileName();
+                    if (submitted == null) {
+                        // regular form field
+                        InputStream is = part.getInputStream();
+                        byte[] bytes = is.readAllBytes();
+                        String charset = req.getCharacterEncoding() != null ? req.getCharacterEncoding() : "UTF-8";
+                        String value = new String(bytes, charset);
+                        paramsMap.put(name, new String[]{value});
+                    } else {
+                        // file part - key by original filename
+                        byte[] bytes = part.getInputStream().readAllBytes();
+                        if (!uploadedBytes.containsKey(submitted)) {
+                            uploadedBytes.put(submitted, bytes);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Enumeration<String> paramNames = req.getParameterNames();
+                while (paramNames.hasMoreElements()) {
+                    String pname = paramNames.nextElement();
+                    String[] values = req.getParameterValues(pname);
+                    if (values != null && values.length > 0) {
+                        paramsMap.put(pname, values);
+                    }
+                }
+            }
+
+            req.setAttribute("uploadedFilesBytes", uploadedBytes);
+            return paramsMap;
+        }
+
         Enumeration<String> paramNames = req.getParameterNames();
         while (paramNames.hasMoreElements()) {
             String pname = paramNames.nextElement();
@@ -216,6 +256,29 @@ public class FrontServlet extends HttpServlet {
             }
 
             Class<?> pType = parameter.getType();
+            // First, support binding uploaded files if present
+            Object uploadedBytesAttr = req.getAttribute("uploadedFilesBytes");
+            if (uploadedBytesAttr instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, byte[]> uploadedBytes = (Map<String, byte[]>) uploadedBytesAttr;
+
+                // Map<String, byte[]> binding - keys are original filenames
+                if (Map.class.isAssignableFrom(parameter.getType())) {
+                    java.lang.reflect.Type pTypeGeneric = parameter.getParameterizedType();
+                    if (pTypeGeneric instanceof ParameterizedType) {
+                        java.lang.reflect.Type[] typeArgs = ((ParameterizedType) pTypeGeneric).getActualTypeArguments();
+                        if (typeArgs != null && typeArgs.length == 2 && typeArgs[0] instanceof Class && typeArgs[1] instanceof Class) {
+                            Class<?> keyCls = (Class<?>) typeArgs[0];
+                            java.lang.Class<?> valCls = (Class<?>) typeArgs[1];
+                            if (keyCls == String.class && valCls == byte[].class) {
+                                args[i] = uploadedBytes;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+
             if (!pType.isPrimitive() && pType != String.class && pType != Integer.class && pType != int.class) {
                 args[i] = instantiateObjectFromParams(pType, paramName, paramsMap);
                 continue;
