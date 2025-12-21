@@ -54,11 +54,15 @@ public class PaymentController {
 
     @POST
     @UrlMapping("/upload")
-    public ModelView handleUpload(UploadedFile file) {
+    public ModelView handleUpload(java.util.Map<String, byte[]> files) {
         ModelView mv = new ModelView("upload-result");
-        if (file != null) {
-            mv.addObject("filename", file.getFileName());
-            mv.addObject("size", file.getContent() != null ? file.getContent().length : 0);
+        if (files != null && !files.isEmpty()) {
+            // pick the first entry (filename -> bytes)
+            java.util.Map.Entry<String, byte[]> e = files.entrySet().iterator().next();
+            String filename = e.getKey();
+            byte[] bytes = e.getValue();
+            mv.addObject("filename", filename);
+            mv.addObject("size", bytes != null ? bytes.length : 0);
         }
         return mv;
     }

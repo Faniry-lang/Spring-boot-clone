@@ -179,8 +179,9 @@ public class FrontServlet extends HttpServlet {
 
         String contentType = req.getContentType();
         if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
-            // Parse multipart request: collect form fields and file parts.
-            Map<String, List<UploadedFile>> uploaded = new HashMap<>();
+            // Parse multipart request: collect form fields and file parts. For files we store a map
+            // keyed by original filename -> byte[] (first occurrence wins).
+            Map<String, byte[]> uploadedBytes = new HashMap<>();
             try {
                 for (Part part : req.getParts()) {
                     String name = part.getName();
@@ -193,10 +194,11 @@ public class FrontServlet extends HttpServlet {
                         String value = new String(bytes, charset);
                         paramsMap.put(name, new String[]{value});
                     } else {
-                        // file part
+                        // file part - key by original filename
                         byte[] bytes = part.getInputStream().readAllBytes();
-                        UploadedFile uf = new UploadedFile(name, submitted, part.getContentType(), bytes);
-                        uploaded.computeIfAbsent(name, k -> new ArrayList<>()).add(uf);
+                        if (!uploadedBytes.containsKey(submitted)) {
+                            uploadedBytes.put(submitted, bytes);
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -211,8 +213,8 @@ public class FrontServlet extends HttpServlet {
                 }
             }
 
-            // expose uploaded files to binding code
-            req.setAttribute("uploadedFiles", uploaded);
+            // expose uploaded files (filename -> bytes) to binding code
+            req.setAttribute("uploadedFilesBytes", uploadedBytes);
             return paramsMap;
         }
 
@@ -264,65 +266,21 @@ public class FrontServlet extends HttpServlet {
 
             Class<?> pType = parameter.getType();
             // First, support binding uploaded files if present
-            Object uploadedAttr = req.getAttribute("uploadedFiles");
-            if (uploadedAttr instanceof Map) {
+            Object uploadedBytesAttr = req.getAttribute("uploadedFilesBytes");
+            if (uploadedBytesAttr instanceof Map) {
                 @SuppressWarnings("unchecked")
-                Map<String, List<UploadedFile>> uploaded = (Map<String, List<UploadedFile>>) uploadedAttr;
+                Map<String, byte[]> uploadedBytes = (Map<String, byte[]>) uploadedBytesAttr;
 
-                // Single UploadedFile
-                if (parameter.getType() == UploadedFile.class) {
-                    List<UploadedFile> list = uploaded.get(paramName);
-                    if (list != null && !list.isEmpty()) {
-                        args[i] = list.get(0);
-                        continue;
-                    }
-                }
-
-                // Array of UploadedFile
-                if (parameter.getType().isArray() && parameter.getType().getComponentType() == UploadedFile.class) {
-                    List<UploadedFile> list = uploaded.get(paramName);
-                    if (list != null) {
-                        UploadedFile[] arr = list.toArray(new UploadedFile[0]);
-                        args[i] = arr;
-                        continue;
-                    }
-                }
-
-                // List<UploadedFile>
-                if (List.class.isAssignableFrom(parameter.getType())) {
-                    java.lang.reflect.Type pTypeGeneric = parameter.getParameterizedType();
-                    if (pTypeGeneric instanceof ParameterizedType) {
-                        java.lang.reflect.Type[] typeArgs = ((ParameterizedType) pTypeGeneric).getActualTypeArguments();
-                        if (typeArgs != null && typeArgs.length == 1 && typeArgs[0] instanceof Class && typeArgs[0] == UploadedFile.class) {
-                            List<UploadedFile> list = uploaded.get(paramName);
-                            if (list != null) {
-                                args[i] = list;
-                                continue;
-                            } else {
-                                args[i] = Collections.emptyList();
-                                continue;
-                            }
-                        }
-                    }
-                }
-
-                // Map<String, byte[]>
+                // Map<String, byte[]> binding - keys are original filenames
                 if (Map.class.isAssignableFrom(parameter.getType())) {
                     java.lang.reflect.Type pTypeGeneric = parameter.getParameterizedType();
                     if (pTypeGeneric instanceof ParameterizedType) {
                         java.lang.reflect.Type[] typeArgs = ((ParameterizedType) pTypeGeneric).getActualTypeArguments();
                         if (typeArgs != null && typeArgs.length == 2 && typeArgs[0] instanceof Class && typeArgs[1] instanceof Class) {
                             Class<?> keyCls = (Class<?>) typeArgs[0];
-                            Class<?> valCls = (Class<?>) typeArgs[1];
-                            if (keyCls == String.class && (valCls == byte[].class || valCls == Byte[].class)) {
-                                Map<String, byte[]> map = new HashMap<>();
-                                for (Map.Entry<String, List<UploadedFile>> e : uploaded.entrySet()) {
-                                    List<UploadedFile> list = e.getValue();
-                                    if (list != null && !list.isEmpty()) {
-                                        map.put(e.getKey(), list.get(0).getContent());
-                                    }
-                                }
-                                args[i] = map;
+                            java.lang.Class<?> valCls = (Class<?>) typeArgs[1];
+                            if (keyCls == String.class && valCls == byte[].class) {
+                                args[i] = uploadedBytes;
                                 continue;
                             }
                         }
