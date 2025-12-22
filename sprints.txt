@@ -51,7 +51,7 @@ sprint 9:
 
 sprint 10:
     - upload de fichier
-        - on créear un formulaire avec enctype="multipart/form-data"
+        - on crée un formulaire avec enctype="multipart/form-data"
         - on construit un map dans FrontServlet
             - on récupère les parties du fichier avec request.getParts()
             - on crée un tableau de bytes pour chaque partie
