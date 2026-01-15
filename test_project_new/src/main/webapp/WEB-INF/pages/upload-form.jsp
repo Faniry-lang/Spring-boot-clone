@@ -5,7 +5,7 @@
 </head>
 <body>
     <h2>Upload a File</h2>
-    <form action="/paiement/upload" method="post" enctype="multipart/form-data">
+    <form action="/test_project/paiement/upload" method="post" enctype="multipart/form-data">
         <label for="file">Choose file:</label>
         <input type="file" id="file" name="file"><br><br>
         <input type="submit" value="Upload">

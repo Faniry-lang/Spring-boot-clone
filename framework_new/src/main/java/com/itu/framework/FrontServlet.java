@@ -10,6 +10,7 @@ import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ import java.util.Date;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import com.itu.framework.annotations.Json;
+import com.itu.framework.annotations.Session;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
 
@@ -103,6 +105,9 @@ public class FrontServlet extends HttpServlet {
             Object[] args = bindMethodArguments(method, paramsMap, path, mapping, req);
 
             Object result = method.invoke(controllerInstance, args);
+
+            // Synchronize session after method invocation
+            synchronizeSession(method, args, req);
 
             // If the controller method is annotated with @Json, serialize the result to JSON.
             if (method.isAnnotationPresent(Json.class)) {
@@ -227,6 +232,25 @@ public class FrontServlet extends HttpServlet {
         for (int i = 0; i < parameters.length; i++) {
             java.lang.reflect.Parameter parameter = parameters[i];
             String paramName = parameter.getName();
+
+            // Handle @Session annotation - must be Map<String, Object>
+            if (parameter.isAnnotationPresent(Session.class)) {
+                if (!Map.class.isAssignableFrom(parameter.getType())) {
+                    throw new IllegalArgumentException("@Session parameter must be of type Map<String, Object>");
+                }
+
+                // Copy HttpSession attributes to Map
+                HttpSession httpSession = req.getSession(true);
+                Map<String, Object> sessionMap = new HashMap<>();
+                Enumeration<String> attributeNames = httpSession.getAttributeNames();
+                while (attributeNames.hasMoreElements()) {
+                    String attrName = attributeNames.nextElement();
+                    sessionMap.put(attrName, httpSession.getAttribute(attrName));
+                }
+
+                args[i] = sessionMap;
+                continue;
+            }
 
             if (parameter.isAnnotationPresent(com.itu.framework.annotations.RequestParam.class)) {
                 com.itu.framework.annotations.RequestParam requestParam = parameter
@@ -509,4 +533,39 @@ public class FrontServlet extends HttpServlet {
         return value;
     }
 
+    /**
+     * Synchronize session Map back to HttpSession after method invocation.
+     * This persists any changes made to the session Map during the controller method execution.
+     */
+    private void synchronizeSession(Method method, Object[] args, HttpServletRequest req) {
+        java.lang.reflect.Parameter[] parameters = method.getParameters();
+
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(Session.class) && args[i] instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> sessionMap = (Map<String, Object>) args[i];
+                HttpSession httpSession = req.getSession(true);
+
+                // Clear existing attributes that are not in the map anymore
+                Enumeration<String> attributeNames = httpSession.getAttributeNames();
+                Set<String> toRemove = new HashSet<>();
+                while (attributeNames.hasMoreElements()) {
+                    String attrName = attributeNames.nextElement();
+                    if (!sessionMap.containsKey(attrName)) {
+                        toRemove.add(attrName);
+                    }
+                }
+                for (String attrName : toRemove) {
+                    httpSession.removeAttribute(attrName);
+                }
+
+                // Set/update attributes from the map
+                for (Map.Entry<String, Object> entry : sessionMap.entrySet()) {
+                    httpSession.setAttribute(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+    }
+
 }
+
