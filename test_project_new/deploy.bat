@@ -4,8 +4,8 @@ setlocal enabledelayedexpansion
 @REM chemin de apache tomcat sous linux :  /home/faniry/Documents/apache-tomcat-10.1.48
 
 :: Déclaration des variables
-set "work_dir=C:\Users\Faniry\Documents\GitHub\framework_project\test_project_new"
-set "web_apps=C:\apache-tomcat-10.1.34\apache-tomcat-10.1.34\webapps"
+set "work_dir=C:\Users\ME-PC\Documents\GitHub\Spring-boot-clone\test_project_new"
+set "web_apps=C:\Users\ME-PC\Documents\apache-tomcat-10.1.50\apache-tomcat-10.1.50\webapps"
 set "war_name=test_project"
 
 :: Effacer le fichier .war dans [web_apps] s'il existe
