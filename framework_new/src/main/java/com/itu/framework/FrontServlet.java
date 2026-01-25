@@ -3,6 +3,7 @@ package com.itu.framework;
 import com.itu.framework.helpers.ComponentScan;
 import com.itu.framework.helpers.Mapping;
 import com.itu.framework.view.ModelView;
+import com.itu.framework.helpers.SecurityConfig;
 
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
@@ -30,6 +31,9 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import com.itu.framework.annotations.Json;
 import com.itu.framework.annotations.Session;
+import com.itu.framework.annotations.Anonym;
+import com.itu.framework.annotations.Authorized;
+import com.itu.framework.annotations.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
 
@@ -40,6 +44,7 @@ public class FrontServlet extends HttpServlet {
     private String controllerPackage;
     private String viewPrefix;
     private String viewSuffix;
+    private SecurityConfig securityConfig = new SecurityConfig();
 
     @Override
     public void init(ServletConfig config) throws ServletException {
@@ -63,6 +68,14 @@ public class FrontServlet extends HttpServlet {
             this.urlMappings = ComponentScan.scanControllers(this.controllerPackage);
         } catch (Exception e) {
             throw new ServletException("Failed to scan controllers", e);
+        }
+
+        // Load security config from WEB-INF/security-config.xml by default
+        try {
+            securityConfig.loadFromServletContext(getServletContext(), "/WEB-INF/security-config.xml");
+        } catch (Exception e) {
+            // ignore and keep defaults
+            e.printStackTrace();
         }
     }
 
@@ -99,6 +112,12 @@ public class FrontServlet extends HttpServlet {
 
             if (method == null) {
                 throw new NoSuchMethodException(mapping.getMethodName());
+            }
+
+            // Authorization check BEFORE invocation
+            if (!isMethodAuthorized(method, req)) {
+                resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+                return;
             }
 
             LinkedHashMap<String, String[]> paramsMap = buildParamsMap(req);
@@ -531,6 +550,59 @@ public class FrontServlet extends HttpServlet {
         }
         // Fallback: return the raw string
         return value;
+    }
+
+    private boolean isMethodAuthorized(Method method, HttpServletRequest req) {
+        // Anonym allows anyone
+        if (method.isAnnotationPresent(Anonym.class)) {
+            return true;
+        }
+
+        // Authorized requires presence of authorizedKey in session
+        if (method.isAnnotationPresent(Authorized.class)) {
+            String authKey = securityConfig.getAuthorizedKey();
+            HttpSession httpSession = req.getSession(false);
+            if (httpSession == null) return false;
+            Object val = httpSession.getAttribute(authKey);
+            return val != null;
+        }
+
+        // Role check
+        if (method.isAnnotationPresent(Role.class)) {
+            String roleKey = securityConfig.getRoleKey();
+            Role roleAnno = method.getAnnotation(Role.class);
+            String[] allowed = roleAnno.value();
+
+            HttpSession httpSession = req.getSession(false);
+            if (httpSession == null) return false;
+            Object val = httpSession.getAttribute(roleKey);
+            if (val == null) return false;
+
+            // normalize session roles into a Set<String>
+            java.util.Set<String> userRoles = new java.util.HashSet<>();
+            if (val instanceof String) {
+                userRoles.add((String) val);
+            } else if (val instanceof java.util.Collection) {
+                for (Object o : (java.util.Collection) val) {
+                    if (o != null) userRoles.add(o.toString());
+                }
+            } else if (val.getClass().isArray()) {
+                Object[] arr = (Object[]) val;
+                for (Object o : arr) {
+                    if (o != null) userRoles.add(o.toString());
+                }
+            } else {
+                userRoles.add(val.toString());
+            }
+
+            for (String a : allowed) {
+                if (userRoles.contains(a)) return true;
+            }
+            return false;
+        }
+
+        // No annotation -> allow by default
+        return true;
     }
 
     /**
