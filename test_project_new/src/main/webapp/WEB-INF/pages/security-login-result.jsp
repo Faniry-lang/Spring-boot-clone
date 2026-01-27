@@ -11,6 +11,6 @@
 <% } else { %>
     <p>Non connecté</p>
 <% } %>
-<p><a href="/security/links">Retour aux liens</a></p>
+<p><a href="/test_project/security/links">Retour aux liens</a></p>
 </body>
 </html>
