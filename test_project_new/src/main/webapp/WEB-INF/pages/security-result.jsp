@@ -6,6 +6,6 @@
 <body>
 <h1>Résultat</h1>
 <p>${message}</p>
-<p><a href="/security/links">Retour aux liens</a></p>
+<p><a href="/test_project/security/links">Retour aux liens</a></p>
 </body>
 </html>

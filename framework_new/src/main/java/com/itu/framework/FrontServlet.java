@@ -370,6 +370,7 @@ public class FrontServlet extends HttpServlet {
                 return;
             }
 
+            req.setAttribute("ctx", req.getContextPath());
             req.getRequestDispatcher(viewPath).forward(req, resp);
         }
     }
