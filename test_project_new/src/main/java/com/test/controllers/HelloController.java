@@ -1,45 +1,42 @@
 package com.test.controllers;
 
 import com.itu.framework.annotations.Controller;
-import com.itu.framework.annotations.GET;
-import com.itu.framework.annotations.POST;
-import com.itu.framework.annotations.UrlMapping;
+import com.itu.framework.annotations.GetMapping;
+import com.itu.framework.annotations.PostMapping;
 import com.itu.framework.annotations.RequestParam;
 import com.itu.framework.view.ModelView;
 
 @Controller("/hello")
 public class HelloController {
 
-    @UrlMapping("/greeting")
+    @GetMapping("/greeting")
     public ModelView sayHello() {
         ModelView mv = new ModelView("hello");
         mv.addObject("name", "Faniry");
         return mv;
     }
 
-    @UrlMapping("/{name}")
+    @GetMapping("/{name}")
     public String sayHelloToName(String name) {
         return "Hello " + name + "!";
     }
 
-    @UrlMapping("/bye")
+    @GetMapping("/bye")
     public String sayGoodbye() {
         return "Goodbye!";
     }
 
-    @UrlMapping("/search")
+    @GetMapping("/search")
     public String search(@RequestParam("q") String query) {
         return "Searching for: " + query;
     }
 
-    @GET
-    @UrlMapping("/form")
+    @GetMapping("/form")
     public ModelView displayForm() {
         return new ModelView("form");
     }
 
-    @POST
-    @UrlMapping("/save-user")
+    @PostMapping("/save-user")
     public ModelView saveUser(String firstName, String lastName) {
         ModelView mv = new ModelView("result");
         mv.addObject("firstName", firstName);

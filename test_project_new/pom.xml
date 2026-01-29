@@ -7,7 +7,7 @@
     <groupId>com.test</groupId>
     <artifactId>test_project</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>war</packaging>
+    <packaging>jar</packaging>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -16,20 +16,13 @@
     </properties>
 
     <dependencies>
-        <!-- Dependency on the framework project -->
+        <!-- Single dependency on the framework - it brings everything else -->
         <dependency>
             <groupId>com.itu.framework</groupId>
             <artifactId>framework</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- Jakarta Servlet API for Tomcat 10 -->
-        <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <version>6.0.0</version>
-            <scope>provided</scope>
-        </dependency>
         <!-- Jackson for JSON serialization at runtime -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -40,25 +33,62 @@
 
     <build>
         <finalName>test_project</finalName>
+        <resources>
+            <!-- Include standard resources -->
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Include entire webapp directory as resources so they are packaged in the JAR -->
+            <resource>
+                <directory>src/main/webapp</directory>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                     <parameters>true</parameters>
                 </configuration>
             </plugin>
+
+            <!-- Shade plugin to build an executable fat-jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>3.3.2</version>
-                <configuration>
-                    <failOnMissingWebXml>false</failOnMissingWebXml>
-                </configuration>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/INDEX.LIST</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.test.Application</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -71,9 +101,10 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>com.test.Main</mainClass>
+                    <mainClass>com.test.Application</mainClass>
                 </configuration>
             </plugin>
         </plugins>
     </build>
 </project>
+

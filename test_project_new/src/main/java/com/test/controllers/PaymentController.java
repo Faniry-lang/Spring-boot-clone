@@ -1,9 +1,8 @@
 package com.test.controllers;
 
 import com.itu.framework.annotations.Controller;
-import com.itu.framework.annotations.GET;
-import com.itu.framework.annotations.POST;
-import com.itu.framework.annotations.UrlMapping;
+import com.itu.framework.annotations.GetMapping;
+import com.itu.framework.annotations.PostMapping;
 import com.itu.framework.view.ModelView;
 import com.test.models.Paiement;
 import com.test.models.Utilisateur;
@@ -15,8 +14,7 @@ import java.util.List;
 @Controller("/paiement")
 public class PaymentController {
 
-    @GET
-    @UrlMapping("/form")
+    @GetMapping("/form")
     public ModelView displayForm() {
         ModelView mv = new ModelView("paiement-form");
 
@@ -29,8 +27,7 @@ public class PaymentController {
         return mv;
     }
 
-    @POST
-    @UrlMapping("/save")
+    @PostMapping("/save")
     public ModelView savePayment(Paiement paiement) {
         // In-memory creation - mimic persistence
         ModelView mv = new ModelView("paiement-details");
@@ -39,20 +36,17 @@ public class PaymentController {
     }
 
     @Json
-    @GET
-    @UrlMapping("/user-json")
+    @GetMapping("/user-json")
     public Utilisateur getSampleUserJson() {
         return new Utilisateur(99, "JsonUser");
     }
 
-    @GET
-    @UrlMapping("/upload-form")
+    @GetMapping("/upload-form")
     public ModelView uploadForm() {
         return new ModelView("upload-form");
     }
 
-    @POST
-    @UrlMapping("/upload")
+    @PostMapping("/upload")
     public ModelView handleUpload(java.util.Map<String, byte[]> files) {
         ModelView mv = new ModelView("upload-result");
         if (files != null && !files.isEmpty()) {

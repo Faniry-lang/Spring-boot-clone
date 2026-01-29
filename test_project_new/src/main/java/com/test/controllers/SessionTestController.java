@@ -1,10 +1,8 @@
 package com.test.controllers;
 
 import com.itu.framework.annotations.Controller;
-import com.itu.framework.annotations.GET;
-import com.itu.framework.annotations.POST;
+import com.itu.framework.annotations.GetMapping;
 import com.itu.framework.annotations.Session;
-import com.itu.framework.annotations.UrlMapping;
 import com.itu.framework.view.ModelView;
 import com.test.models.Student;
 
@@ -28,8 +26,7 @@ public class SessionTestController {
     /**
      * Display the home page with student list and current session info
      */
-    @GET
-    @UrlMapping("/home")
+    @GetMapping("/home")
     public ModelView showHome(@Session Map<String, Object> session) {
         ModelView mv = new ModelView("session-home");
         mv.addObject("students", studentDatabase);
@@ -53,8 +50,7 @@ public class SessionTestController {
     /**
      * Login by storing a student in session
      */
-    @GET
-    @UrlMapping("/login")
+    @GetMapping("/login")
     public ModelView login(@Session Map<String, Object> session, Integer id) {
         Student student = findStudentById(id);
 
@@ -72,8 +68,7 @@ public class SessionTestController {
     /**
      * Logout by removing student from session
      */
-    @GET
-    @UrlMapping("/logout")
+    @GetMapping("/logout")
     public ModelView logout(@Session Map<String, Object> session) {
         Student currentStudent = (Student) session.get("currentStudent");
         session.remove("currentStudent");
@@ -87,8 +82,7 @@ public class SessionTestController {
     /**
      * Display current session information
      */
-    @GET
-    @UrlMapping("/info")
+    @GetMapping("/info")
     public ModelView sessionInfo(@Session Map<String, Object> session) {
         ModelView mv = new ModelView("session-info");
         mv.addObject("sessionData", session);
@@ -108,8 +102,7 @@ public class SessionTestController {
     /**
      * Add an item to shopping cart in session
      */
-    @GET
-    @UrlMapping("/cart/add")
+    @GetMapping("/cart/add")
     public ModelView addToCart(@Session Map<String, Object> session, String item) {
         @SuppressWarnings("unchecked")
         List<String> cart = (List<String>) session.get("cart");
@@ -131,8 +124,7 @@ public class SessionTestController {
     /**
      * View shopping cart
      */
-    @GET
-    @UrlMapping("/cart/view")
+    @GetMapping("/cart/view")
     public ModelView viewCart(@Session Map<String, Object> session) {
         @SuppressWarnings("unchecked")
         List<String> cart = (List<String>) session.get("cart");
@@ -149,8 +141,7 @@ public class SessionTestController {
     /**
      * Clear shopping cart
      */
-    @GET
-    @UrlMapping("/cart/clear")
+    @GetMapping("/cart/clear")
     public ModelView clearCart(@Session Map<String, Object> session) {
         session.remove("cart");
 

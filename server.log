@@ -1,0 +1,65 @@
+PS C:\Users\ME-PC\Documents\GitHub\Spring-boot-clone> java -jar .\test_project_new\target\test_project.jar
+Looking for WEB-INF/web.xml: jar:file:/C:/Users/ME-PC/Documents/GitHub/Spring-boot-clone/test_project_new/target/test_project.jar!/WEB-INF/web.xml
+Code location: /C:/Users/ME-PC/Documents/GitHub/Spring-boot-clone/test_project_new/target/test_project.jar
+JAR file exists: true, is JAR: true
+Extracting webapp from JAR to: C:\Users\ME-PC\AppData\Local\Temp\webapp16756747603973395208
+Extracted: WEB-INF/pages/form.jsp
+Extracted: WEB-INF/pages/hello.jsp
+Extracted: WEB-INF/pages/paiement-details.jsp
+Extracted: WEB-INF/pages/paiement-form.jsp
+Extracted: WEB-INF/pages/result.jsp
+Extracted: WEB-INF/pages/security-links.jsp
+Extracted: WEB-INF/pages/security-login-result.jsp
+Extracted: WEB-INF/pages/security-result.jsp
+Extracted: WEB-INF/pages/session-cart.jsp
+Extracted: WEB-INF/pages/session-home.jsp
+Total files extracted: 17
+janv. 29, 2026 9:37:08 PM org.apache.catalina.core.StandardContext setPath
+WARNING: A context path must either be an empty string or start with a '/' and do not end with a '/'. The path [/] does not meet these criteria and has been changed to []
+janv. 29, 2026 9:37:09 PM org.apache.coyote.AbstractProtocol init
+INFO: Initializing ProtocolHandler ["http-nio-8080"]
+janv. 29, 2026 9:37:09 PM org.apache.catalina.core.StandardService startInternal
+INFO: Starting service [Tomcat]
+janv. 29, 2026 9:37:09 PM org.apache.catalina.core.StandardEngine startInternal
+INFO: Starting Servlet engine: [Apache Tomcat/10.1.14]
+janv. 29, 2026 9:37:10 PM org.apache.catalina.startup.ContextConfig getDefaultWebXmlFragment
+INFO: No global web.xml found
+janv. 29, 2026 9:37:11 PM org.apache.jasper.servlet.TldScanner scanJars
+INFO: At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+janv. 29, 2026 9:37:11 PM org.apache.coyote.AbstractProtocol start
+INFO: Starting ProtocolHandler ["http-nio-8080"]
+Started embedded Tomcat on port 8080
+FrontServlet: Scanning controllers in package: com.test.controllers
+SCANNING RESOURCE: jar:file:/C:/Users/ME-PC/Documents/GitHub/Spring-boot-clone/test_project_new/target/test_project.jar!/com/test/controllers
+PROTOCOL: jar
+JAR PATH: /C:/Users/ME-PC/Documents/GitHub/Spring-boot-clone/test_project_new/target/test_project.jar
+FOUND CLASS IN JAR: com/test/controllers/HelloController.class
+FOUND CLASS IN JAR: com/test/controllers/PaymentController.class
+FOUND CLASS IN JAR: com/test/controllers/SecurityTestController.class
+FOUND CLASS IN JAR: com/test/controllers/SessionTestController.class
+FrontServlet: Mapped 24 URLs.
+Mapped URL: /paiement/upload
+Mapped URL: /hello/search
+Mapped URL: /session/cart/view
+Mapped URL: /session/cart/add
+Mapped URL: /security/login
+Mapped URL: /security/anonym
+Mapped URL: /session/cart/clear
+Mapped URL: /session/info
+Mapped URL: /hello/save-user
+Mapped URL: /hello/greeting
+Mapped URL: /security/authorized
+Mapped URL: /paiement/upload-form
+Mapped URL: /security/role
+Mapped URL: /hello/form
+Mapped URL: /security/links
+Mapped URL: /paiement/user-json
+Mapped URL: /security/logout
+Mapped URL: /paiement/save
+Mapped URL: /hello/{name}
+Mapped URL: /paiement/form
+Mapped URL: /session/home
+Mapped URL: /hello/bye
+Mapped URL: /session/logout
+Mapped URL: /session/login
+PS C:\Users\ME-PC\Documents\GitHub\Spring-boot-clone>
