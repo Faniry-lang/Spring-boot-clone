@@ -13,6 +13,8 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Tomcat embed version compatible with Jakarta Servlet 6 / Tomcat 10.1 -->
+        <tomcat.embed.version>10.1.14</tomcat.embed.version>
     </properties>
 
     <dependencies>
@@ -31,6 +33,20 @@
             <version>2.15.2</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- Tomcat embedded runtime - included as compile scope for transitive dependencies -->
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>${tomcat.embed.version}</version>
+        </dependency>
+        <!-- JSP support -->
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-jasper</artifactId>
+            <version>${tomcat.embed.version}</version>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -47,6 +63,7 @@
     </dependencies>
 
     <build>
+        <finalName>framework</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -65,8 +65,14 @@ public class FrontServlet extends HttpServlet {
         }
 
         try {
+            System.out.println("FrontServlet: Scanning controllers in package: " + this.controllerPackage);
             this.urlMappings = ComponentScan.scanControllers(this.controllerPackage);
+            System.out.println("FrontServlet: Mapped " + this.urlMappings.size() + " URLs.");
+            for(String url : this.urlMappings.keySet()) {
+                System.out.println("Mapped URL: " + url);
+            }
         } catch (Exception e) {
+            e.printStackTrace();
             throw new ServletException("Failed to scan controllers", e);
         }
 
