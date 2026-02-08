@@ -1,7 +1,8 @@
 package com.test.controllers;
 
 import com.itu.framework.annotations.Controller;
-import com.itu.framework.annotations.GetMapping;
+import com.itu.framework.annotations.GET;
+import com.itu.framework.annotations.UrlMapping;
 import com.itu.framework.annotations.Session;
 import com.itu.framework.view.ModelView;
 import com.itu.framework.annotations.Anonym;
@@ -13,7 +14,8 @@ import java.util.Map;
 @Controller("/security")
 public class SecurityTestController {
 
-    @GetMapping("/links")
+    @GET
+    @UrlMapping("/links")
     public ModelView links(@Session Map<String, Object> session) {
         ModelView mv = new ModelView("security-links");
         Object user = session.get("user");
@@ -21,7 +23,8 @@ public class SecurityTestController {
         return mv;
     }
 
-    @GetMapping("/anonym")
+    @GET
+    @UrlMapping("/anonym")
     @Anonym
     public ModelView anonym() {
         ModelView mv = new ModelView("security-result");
@@ -29,7 +32,8 @@ public class SecurityTestController {
         return mv;
     }
 
-    @GetMapping("/authorized")
+    @GET
+    @UrlMapping("/authorized")
     @Authorized
     public ModelView authorized() {
         ModelView mv = new ModelView("security-result");
@@ -37,7 +41,8 @@ public class SecurityTestController {
         return mv;
     }
 
-    @GetMapping("/role")
+    @GET
+    @UrlMapping("/role")
     @Role({"ADMIN"})
     public ModelView role() {
         ModelView mv = new ModelView("security-result");
@@ -45,7 +50,8 @@ public class SecurityTestController {
         return mv;
     }
 
-    @GetMapping("/login")
+    @GET
+    @UrlMapping("/login")
     public ModelView login(@Session Map<String, Object> session, String username, String role) {
         ModelView mv = new ModelView("security-login-result");
         if (username != null && !username.isEmpty()) {
@@ -64,7 +70,8 @@ public class SecurityTestController {
         return mv;
     }
 
-    @GetMapping("/logout")
+    @GET
+    @UrlMapping("/logout")
     public ModelView logout(@Session Map<String, Object> session) {
         ModelView mv = new ModelView("security-login-result");
         Object u = session.get("user");
