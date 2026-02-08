@@ -27,4 +27,26 @@ public class ModelView {
     public java.util.Map<String, Object> getData() {
         return data;
     }
+
+    private boolean redirect = false;
+
+    public boolean isRedirect() {
+        return redirect;
+    }
+
+    public void setRedirect(boolean redirect) {
+        this.redirect = redirect;
+    }
+
+    public void setRedirectView(String target) {
+        this.setView(target);
+        this.setRedirect(true);
+    }
+
+    public static ModelView redirect(String target) {
+        ModelView mv = new ModelView();
+        mv.setView(target);
+        mv.setRedirect(true);
+        return mv;
+    }
 }

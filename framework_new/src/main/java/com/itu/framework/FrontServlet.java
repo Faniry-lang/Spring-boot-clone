@@ -142,7 +142,16 @@ public class FrontServlet extends HttpServlet {
             }
 
         } catch (Exception e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method");
+            // Log exception to console for debugging
+            System.err.println("=== FrontServlet ERROR ===");
+            e.printStackTrace();
+            if (e.getCause() != null) {
+                System.err.println("=== ROOT CAUSE ===");
+                e.getCause().printStackTrace();
+            }
+            System.err.println("=== END ERROR ===");
+
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error executing method: " + e.getMessage());
             e.printStackTrace(out);
         }
     }
@@ -364,6 +373,29 @@ public class FrontServlet extends HttpServlet {
             out.println(result);
         } else if (result instanceof ModelView) {
             ModelView mv = (ModelView) result;
+
+            // If the ModelView requests a redirect, perform it
+            if (mv.isRedirect()) {
+                String target = mv.getView();
+                // If target is a relative view name (no leading /), resolve with viewPrefix/viewSuffix
+                if (!target.startsWith("/") && getServletContext().getResource(this.viewPrefix + target + this.viewSuffix) != null) {
+                    // treat as view path and redirect to context path + view resource
+                    String resolved = req.getContextPath() + this.viewPrefix + target + this.viewSuffix;
+                    resp.sendRedirect(resolved);
+                } else {
+                    // direct redirect to the target (could be absolute or context-relative)
+                    // If target starts with the context path already, use as-is; otherwise prefix context path for relative ones
+                    if (target.startsWith(req.getContextPath())) {
+                        resp.sendRedirect(target);
+                    } else if (target.startsWith("/")) {
+                        resp.sendRedirect(req.getContextPath() + target);
+                    } else {
+                        resp.sendRedirect(target);
+                    }
+                }
+                return;
+            }
+
             String viewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
 
             // Transfer data from ModelView to Request attributes
@@ -396,7 +428,12 @@ public class FrontServlet extends HttpServlet {
 
     // Instantiate an object and populate its fields from params map.
     private Object instantiateObjectFromParams(Class<?> type, String paramPrefix, LinkedHashMap<String, String[]> params) throws Exception {
-        Object instance = type.getConstructor().newInstance();
+        Object instance;
+        try {
+            instance = type.getConstructor().newInstance();
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException("Class " + type.getName() + " must have a public no-arg constructor for parameter binding", e);
+        }
 
         java.lang.reflect.Field[] fields = type.getDeclaredFields();
         for (java.lang.reflect.Field field : fields) {
