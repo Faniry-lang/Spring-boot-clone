@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<security>
-    <keys>
-        <role>userRole</role>
-        <authorized>user</authorized>
-        <anonym>anon</anonym>
-    </keys>
-</security>
